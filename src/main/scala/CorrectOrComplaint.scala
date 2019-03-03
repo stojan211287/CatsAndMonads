@@ -2,7 +2,7 @@
 // Then, map := flatMap(lift . f) or rather flatmap(f andThen lift)
 case class CorrectOrComplaint[A](possiblyCorrectValue: A, complaintMessage: String) {
 
-  def lift[A](unliftedValue: A): CorrectOrComplaint[A] =
+  def lift(unliftedValue: A): CorrectOrComplaint[A] =
     CorrectOrComplaint(
       possiblyCorrectValue = unliftedValue,
       complaintMessage=""
