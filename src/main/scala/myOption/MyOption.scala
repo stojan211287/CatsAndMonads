@@ -1,3 +1,5 @@
+package myOption
+
 sealed trait MyOption[+A] {
   def map[B](f: A => B): MyOption[B]
   def flatMap[B](f: A => MyOption[B]): MyOption[B]
@@ -19,4 +21,25 @@ case class Truly[A](value: A) extends MyOption[A] {
   override def flatMap[B](f: A => MyOption[B]): MyOption[B] = {
     f(this.value)
   }
+}
+
+object OptionDriver extends App {
+
+  def makeAnIntegerThing(thing: String): MyOption[Int] = {
+    try {
+      val intThing = thing.toInt
+      Truly(value = intThing)
+    }
+    catch {
+      case _: Exception => Zilch
+    }
+  }
+
+  println("TESTING CUSTOM OPTION MONAD\n")
+  // Test MyOption
+  val myOptionForComp = for {
+    a <- makeAnIntegerThing(thing="3")
+    b <- makeAnIntegerThing(thing="noThingWhatsoever")
+  } yield a*b
+  println(s"The result is $myOptionForComp. The result SHOULD BE Zilch.\n")
 }

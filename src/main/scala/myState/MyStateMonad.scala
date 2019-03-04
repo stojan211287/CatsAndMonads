@@ -1,21 +1,27 @@
+package myState
+
 case class MyStateMonad[S, A](run: S => (S, A)) {
 
   //map as composition of lift and flatMap
-  def map[B](g: A => B): MyStateMonad[S, B] = flatMap(a => MyStateMonad.lift(g(a)))
+  def map[B](f: A => B): MyStateMonad[S, B] = flatMap(f andThen MyStateMonad.lift)
 
   //flatMap `chains run functions together`
   def flatMap[B](g: A => MyStateMonad[S, B]): MyStateMonad[S, B] = {
 
-    val runFunctionChained = (s0: S) => {
-      // Use the give state, s0, to execute the `run` function on THIS instance
-      // Thus, you get a newState and a stateUpdate
-      val (newState, stateUpdate) = this.run(s0)
-      // Then, convert the state update into new instance of state monad (`g(a)`)
-      // Finally, execute `run` on THAT instance, given the newState
-      g(stateUpdate).run(newState)
+    val chainedRunFunction = (initialStateMonad: S) => {
+
+      val (stateMonadNo2, stateValueOfTypeA) = this.run(initialStateMonad)
+
+      // generate new state monad, with state value of type B
+      val monadWrappingStateValueOfTypeB = g(stateValueOfTypeA)
+      //
+      val (stateMonadNo3, stateValueOfTypeB) = monadWrappingStateValueOfTypeB.run(stateMonadNo2)
+
+      // This is what you return from chainedRunFunction
+      (stateMonadNo3, stateValueOfTypeB)
     }
     // Return new instance of monad type with chained run function
-    MyStateMonad(run = runFunctionChained)
+    MyStateMonad(run = chainedRunFunction)
   }
 }
 
@@ -23,18 +29,22 @@ object MyStateMonad {
   def lift[S, A](stateUpdate: A): MyStateMonad[S, A] = MyStateMonad(run = s => (s, stateUpdate))
 }
 
-object DriveStateMonad extends App {
+object StateDriver extends App {
 
   case class GameState(state: Int)
 
   val beginningState = GameState(0)
 
+  // This function is needed to define the `first` run function and kickoff the State monad chaining
+  // Also, unsurprisingly, it tells the chain of State monads `how` to update state at each step
   def updateGameState(stateUpdate: Int): MyStateMonad[GameState, Int] = MyStateMonad { s: GameState => {
+    // This is the sum total of all state updates we do. Could be more complicated.
     val newState = s.state + stateUpdate
     (GameState(state = newState), newState)
    }
   }
 
+  // This is how you would normally do monad chaining, but...
 //  val updatedState = for {
 //    _ <- updateGameState(4)
 //    _ <- updateGameState(10)
@@ -42,7 +52,7 @@ object DriveStateMonad extends App {
 //  } yield lastState
 //
 
-  // Let's expand the for comprehension to see what the compiler sees
+  // ...let's expand the for comprehension to see what the compiler sees
   val updatedState =
     updateGameState(4).flatMap(_ =>
       updateGameState(10).flatMap( _ =>
