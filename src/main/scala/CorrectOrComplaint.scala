@@ -2,12 +2,6 @@
 // Then, map := flatMap(lift . f) or rather flatmap(f andThen lift)
 case class CorrectOrComplaint[A](possiblyCorrectValue: A, complaintMessage: String) {
 
-  def lift(unliftedValue: A): CorrectOrComplaint[A] =
-    CorrectOrComplaint(
-      possiblyCorrectValue = unliftedValue,
-      complaintMessage=""
-    )
-
   def flatMap[B](f: A => CorrectOrComplaint[B]): CorrectOrComplaint[B] = {
     val possiblyComplaint = f(this.possiblyCorrectValue)
     CorrectOrComplaint(
@@ -17,9 +11,15 @@ case class CorrectOrComplaint[A](possiblyCorrectValue: A, complaintMessage: Stri
   }
 
   def map[B](f: A => B): CorrectOrComplaint[B] = {
-    val liftedFunction: A => CorrectOrComplaint[B] = f andThen lift
+    val liftedFunction: A => CorrectOrComplaint[B] = f andThen CorrectOrComplaint.lift
     val returnMonadElement: CorrectOrComplaint[B] = flatMap(liftedFunction)
     returnMonadElement
   }
 
+}
+// Put `lift` method into companion object
+object  CorrectOrComplaint{
+  def lift[A](unliftedValue: A): CorrectOrComplaint[A] = CorrectOrComplaint(
+    possiblyCorrectValue = unliftedValue,
+    complaintMessage="")
 }
