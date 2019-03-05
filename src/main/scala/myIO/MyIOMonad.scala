@@ -1,0 +1,5 @@
+package myIO
+
+class MyIOMonad {
+
+}
