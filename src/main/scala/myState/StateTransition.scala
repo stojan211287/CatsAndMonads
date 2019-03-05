@@ -1,32 +1,32 @@
 package myState
 
-case class MyStateMonad[S, A](run: S => (S, A)) {
+case class StateTransition[S, A](run: S => (S, A)) {
 
   //map as composition of lift and flatMap
-  def map[B](f: A => B): MyStateMonad[S, B] = flatMap(f andThen MyStateMonad.lift)
+  def map[B](f: A => B): StateTransition[S, B] = flatMap(f andThen StateTransition.lift)
 
   //flatMap `chains run functions together`
-  def flatMap[B](g: A => MyStateMonad[S, B]): MyStateMonad[S, B] = {
+  def flatMap[B](f: A => StateTransition[S, B]): StateTransition[S, B] = {
 
-    val chainedRunFunction = (initialStateMonad: S) => {
+    val chainedRunFunction = (initialState: S) => {
 
-      val (stateMonadNo2, stateValueOfTypeA) = this.run(initialStateMonad)
+      // `run` first state transition, starting from initialState
+      val (stateAfterFirstTransition, stateChangeOfTypeA) = this.run(initialState)
 
-      // generate new state monad, with state value of type B
-      val monadWrappingStateValueOfTypeB = g(stateValueOfTypeA)
+      // generate secondStateTransition - from stateChangeOfTypeA
+      val secondStateTransition = f(stateChangeOfTypeA)
       //
-      val (stateMonadNo3, stateValueOfTypeB) = monadWrappingStateValueOfTypeB.run(stateMonadNo2)
+      val (stateAfterSecondTransition, stateChangeOfTypeB) = secondStateTransition.run(stateAfterFirstTransition)
 
-      // This is what you return from chainedRunFunction
-      (stateMonadNo3, stateValueOfTypeB)
+      (stateAfterSecondTransition, stateChangeOfTypeB)
     }
     // Return new instance of monad type with chained run function
-    MyStateMonad(run = chainedRunFunction)
+    StateTransition(run = chainedRunFunction)
   }
 }
 
-object MyStateMonad {
-  def lift[S, A](stateUpdate: A): MyStateMonad[S, A] = MyStateMonad(run = s => (s, stateUpdate))
+object StateTransition {
+  def lift[S, A](stateUpdate: A): StateTransition[S, A] = StateTransition(run = s => (s, stateUpdate))
 }
 
 object StateDriver extends App {
@@ -37,7 +37,7 @@ object StateDriver extends App {
 
   // This function is needed to define the `first` run function and kickoff the State monad chaining
   // Also, unsurprisingly, it tells the chain of State monads `how` to update state at each step
-  def updateGameState(stateUpdate: Int): MyStateMonad[GameState, Int] = MyStateMonad { s: GameState => {
+  def updateGameState(stateUpdate: Int): StateTransition[GameState, Int] = StateTransition { s: GameState => {
     // This is the sum total of all state updates we do. Could be more complicated.
     val newState = s.state + stateUpdate
     (GameState(state = newState), newState)
