@@ -1,4 +1,4 @@
-package myWrapper
+package MyWrapper
 
 case class MyWrapper[A] private(wrappedValue: A) {
 

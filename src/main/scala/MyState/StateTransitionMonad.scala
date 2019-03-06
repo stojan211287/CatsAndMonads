@@ -1,4 +1,4 @@
-package myState
+package MyState
 
 case class StateTransition[S, A](run: S => (S, A)) {
 

@@ -1,4 +1,4 @@
-package myOption
+package MyOption
 
 sealed trait MyOption[+A] {
   def map[B](f: A => B): MyOption[B]
