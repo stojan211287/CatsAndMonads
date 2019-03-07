@@ -25,7 +25,7 @@ object ReaderDriver extends App {
   case class Config(configInt: Int)
 
   def addAnInt(newInt: Int): MyReader[Config, Int] = {
-    MyReader(run = (config: Config) => MyReader(newInt).run(config))
+    MyReader(run = (config: Config) => config.configInt + newInt)
   }
 
   def multiplyByInt(newInt: Int): MyReader[Config, Int] = {
@@ -33,18 +33,18 @@ object ReaderDriver extends App {
   }
 
   def writeMessage(newInt: Int): MyReader[Config, String] = {
-    MyReader(s"This is a message with $newInt")
+    MyReader(run = (config: Config) => s"This is a message with $newInt, as well as ${config.configInt}")
   }
 
-  val startConfig: Config = Config(1)
+  val startConfig: Config = Config(4)
 
-  val twoOpsDependentOnSingleConfig = for {
+  val multipleOpsDependentOnSingleConfig = for {
     firstConfigOp <- addAnInt(3)
     secondConfigOp <- multiplyByInt(5)
     thirdConfigOp <- writeMessage(14)
   } yield (firstConfigOp, secondConfigOp, thirdConfigOp)
 
-  val result: (Int, Int, String) = twoOpsDependentOnSingleConfig.run(startConfig)
-  println(s"The result of a chains of ops, taking a config is - $result")
+  val result: (Int, Int, String) = multipleOpsDependentOnSingleConfig.run(startConfig)
+  println(s"The results of multiple ops, taking a config is - $result")
 
 }
