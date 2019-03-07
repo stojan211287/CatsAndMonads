@@ -26,7 +26,7 @@ object  MyWriterMonad{
     message="")
 }
 
-object ReaderDriver extends App {
+object WriterDriver extends App {
 
   println("TESTING CUSTOM READER MONAD\n")
   // Test CorrectOrComplaint - a version of the Reader monad
@@ -41,6 +41,7 @@ object ReaderDriver extends App {
     second <- doAThingWhileTalking(_ + 2, "Added 2")(num = first)
     third <- doAThingWhileTalking(_ / 4, "Divided by 4")(num = second)
   } yield third
+
   println(s"The result of testing my custom Reader monad is ${readerComplains.computeValue}.")
   println("It was obtained through these steps - \n")
   println(s"${readerComplains.message}")
