@@ -1,74 +1,58 @@
 package MonadT
 
-// Here we show that it's possible to chain computations inside a for-comp, wrapped by TWO different monadic types
 object TransformerDemo extends App {
 
-    // the `IO` functions i used previously
-    def getLine(): IO[String] = IO(scala.io.StdIn.readLine())
-    def putStr(s: String): IO[Unit] = IO(print(s))
-
-    def toInt(s: String): Int = {
+    def toInt(someString: String): Int = {
       try {
-        s.toInt
+        someString.toInt
       } catch {
-        case e: NumberFormatException => 0
+        case _: Exception => 0
       }
     }
 
-    // a class to track the sum of the ints that are given
+    // A state class - `type S`
     case class SumState(sum: Int)
 
     // an implementation of the `Monad` trait for the `IO` type.
-    implicit val IOMonad = new MonadTrait[IO] {
-      def lift[A](a: => A): IO[A] = {
-        IO(a)
-      }
+    implicit val IOMonad: MonadTrait[IO] = new MonadTrait[IO] {
+      def lift[A](a: => A): IO[A] = IO(a) //  use `apply`, defined in the IO monad as a `lift`
       def flatMap[A, B](ma: IO[A])(f: A => IO[B]): IO[B] = ma.flatMap(f)
     }
 
-    /**
-      * given the int `i`, add it to the previous `sum` from the given SumState `s`;
-      * then return a new state `newState`, created with the new sum;
-      * at the end of the function, wrap `newState` in an `IO`;
-      * the anonymous function creates a `StateT` wrapped around that `IO`.
-      */
-    def doSumWithStateT(newValue: Int): StateTransformer[IO, SumState, Int] = StateTransformer{ (oldState: SumState) =>
-
-      // create a new sum from `i` and the previous sum from `s`
-      val newSum = newValue + oldState.sum
-
-      // create a new SumState
-      val newState: SumState = oldState.copy(sum = newSum)
-
-      // return the new state and the new sum, wrapped in an IO
-      IO(newState, newSum)
+    def doSumWithStateTransformer(newValue: Int): StateTransformer[IO, SumState, Int] = {
+      val newStateTTransition = (oldState: SumState) => {
+        val newSum = newValue + oldState.sum
+        val newState: SumState = oldState.copy(sum = newSum)
+        // Return the state tuple (S, B), wrapped in the IO monad
+        IO(newState, newSum)
+      }
+      StateTransformer(computation = newStateTTransition)
     }
 
-    /**
-      * the purpose of this function is to “lift” an IO action into the StateT monad.
-      * given an IO instance named `io` as input, the anonymous function transforms
-      * the `IO[A]` into an `IO[(SumState, A)]`;
-      * that result is then wrapped in a `StateT`.
-      */
-    def liftIoIntoStateT[A](io: IO[A]): StateTransformer[IO, SumState, A] = StateTransformer { s =>
-      io.map(a => (s, a))  // yields the type`[IO(SumState, A)]`
+    def liftIoIntoStateTransformer[A](io: IO[A]): StateTransformer[IO, SumState, A] = StateTransformer { s =>
+      io.map(a => (s, a))  // yields the type `[IO(SumState, A)]`
     }
 
-    // new versions of the i/o functions that uses StateT
-    def getLineAsStateT():         StateTransformer[IO, SumState, String] = liftIoIntoStateT(getLine)
-    def putStrAsStateT(s: String): StateTransformer[IO, SumState, Unit]   = liftIoIntoStateT(putStr(s))
+    def getLineAsStateTransformer: StateTransformer[IO, SumState, String] = {
+      val sideEffectFunction = () => scala.io.StdIn.readLine() // a function with side-effects takes no params - no RT
+      val monadWrapOfSideEffect: IO[String] = IO(sideEffectFunction())
+      liftIoIntoStateTransformer(monadWrapOfSideEffect)
+    }
 
-    /**
-      * this loop stops when you type 'q' at the command line
-      */
+    def putStrAsStateT(stringToShow: String): StateTransformer[IO, SumState, Unit]   = {
+      val showUserInput: String =>  Unit = (printThis: String) => println(printThis)
+      val printWrappedByIO: IO[Unit] = IO(showUserInput(stringToShow))
+      liftIoIntoStateTransformer(printWrappedByIO)
+    }
+
     def sumLoop: StateTransformer[IO, SumState, Unit] = for {
-      _     <- putStrAsStateT("\ngive me an int, or 'q' to quit: ")
-      input <- getLineAsStateT
+      _     <- putStrAsStateT("\nPlease type in an integer, or 'q' to quit: ")
+      input <- getLineAsStateTransformer
       _     <- if (input == "q") {
-        liftIoIntoStateT(IO(Unit))
+        liftIoIntoStateTransformer(IO(Unit))
       } else for {
-        i <- liftIoIntoStateT(IO(toInt(input)))
-        _ <- doSumWithStateT(i)
+        i <- liftIoIntoStateTransformer(IO(toInt(input)))
+        _ <- doSumWithStateTransformer(i)
         _ <- sumLoop
       } yield Unit
     } yield Unit
