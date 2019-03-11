@@ -1,4 +1,4 @@
-# A small repo, where I explore the concept of monads by building my own
+# A small repo, where I explore concepts like monads by building my own
 
 
 Work based on: 
